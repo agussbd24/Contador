@@ -32,6 +32,14 @@ export function analyzeOnChain(metrics: Record<string, number>): OnChainScore {
 
   const normalized = Math.max(-10, Math.min(10, score));
 
+  const interpretation: Record<string, string> = {};
+  interpretation.net_exchange_flow = netFlow > 0 ? 'Bullish - Outflow mayor' : 'Bearish - Inflow mayor';
+  interpretation.whale_volume = whaleVol > 50000 ? 'Alta actividad ballena' : 'Normal';
+  interpretation.active_addresses = (metrics.active_addresses || 0) > 1000000 ? 'Bullish - Crecimiento usuarios' : 'Neutral';
+  interpretation.staking_ratio = stakingRatio > 0.70 ? 'Bullish - Alta demanda' : stakingRatio < 0.50 ? 'Bearish - Baja demanda' : 'Neutral';
+  interpretation.exchange_reserve_change = exchReserveChange < -0.01 ? 'Bullish - Baja reserva' : exchReserveChange > 0.01 ? 'Bearish - Alta reserva' : 'Neutral';
+  interpretation.nvt_ratio = nvt < 30 ? 'Undervalued' : nvt > 80 ? 'Overvalued' : 'Fair value';
+
   return {
     raw: score,
     normalized,
@@ -47,5 +55,6 @@ export function analyzeOnChain(metrics: Record<string, number>): OnChainScore {
       exchange_reserve_change: exchReserveChange,
       nvt_ratio: nvt,
     },
+    interpretation,
   };
 }

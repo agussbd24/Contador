@@ -53,7 +53,7 @@ export default {
           response = await handleSignalHistory(env);
           break;
         case '/market/overview':
-          response = await handleMarketOverview();
+          response = await handleMarketOverview(env);
           break;
         case '/price/history':
           response = await handlePriceHistory(url);
@@ -164,20 +164,6 @@ async function handleSignal(env: Env): Promise<Response> {
   };
   result.dolar = dolar;
 
-  // Store in D1
-  try {
-    await env.DB.prepare(
-      `INSERT INTO signals (time, signal, confidence, composite_score, technical_score, onchain_score, sentiment_score, price, stop_loss, take_profit, rr_ratio)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(
-      new Date().toISOString(), result.signal, result.confidence, result.composite_score,
-      result.breakdown.technical, result.breakdown.onchain, result.breakdown.sentiment,
-      result.price, result.risk_levels.stop_loss, result.risk_levels.take_profit, result.risk_levels.rr_ratio,
-    ).run();
-  } catch (e) {
-    console.error('D1 write error:', e);
-  }
-
   return json(result);
 }
 
@@ -282,7 +268,7 @@ async function runAnalysisAndAlert(env: Env): Promise<void> {
   console.log(`Analysis: ${result.signal} (${result.confidence}%) @ $${result.price}`);
 }
 
-async function handleMarketOverview(): Promise<Response> {
+async function handleMarketOverview(env: Env): Promise<Response> {
   const [btc, eth, sol, fg, dolar] = await Promise.all([
     fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT').then(r => r.json()).catch(() => null),
     fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT').then(r => r.json()).catch(() => null),

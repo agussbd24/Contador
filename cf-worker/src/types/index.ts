@@ -30,22 +30,25 @@ export interface TechnicalScore {
   raw: number;
   normalized: number;
   indicators: Record<string, any>;
+  interpretation?: Record<string, string>;
 }
 
 export interface OnChainScore {
   raw: number;
   normalized: number;
   metrics: Record<string, number>;
+  interpretation?: Record<string, string>;
 }
 
 export interface SentimentScore {
   score: number;
   classification: string;
   breakdown: Record<string, number>;
+  interpretation?: Record<string, string>;
 }
 
 export interface Signal {
-  signal: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SELL';
+  signal: 'STRONG_BUY' | 'BUY' | 'ACCUMULATE' | 'HOLD' | 'DISTRIBUTE' | 'SELL' | 'STRONG_SELL';
   confidence: number;
   composite_score: number;
   price: number;

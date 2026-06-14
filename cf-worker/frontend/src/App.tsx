@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchSignal, fetchMarket, fetchHistory, checkHealth, fetchMarketOverview, fetchPriceHistory, SignalData, MarketData, MarketOverview } from './api';
 
 /* ─── HELPERS ─── */
-const $ = (n: number, d = 2) => n?.toFixed(d) ?? '-';
-const usd = (n: number) => 'US$' + n?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '-';
-const ars = (n: number) => '$' + n?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) ?? '-';
-const pct = (n: number) => (n >= 0 ? '+' : '') + n?.toFixed(2) + '%';
+const $ = (n: number, d = 2) => n != null ? n.toFixed(d) : '-';
+const usd = (n: number) => n != null ? 'US$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+const ars = (n: number) => n != null ? '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 }) : '-';
+const pct = (n: number) => n != null ? (n >= 0 ? '+' : '') + n.toFixed(2) + '%' : '-';
 
 const sigMap: Record<string, { label: string; icon: string; cls: string; color: string }> = {
   STRONG_BUY: { label: 'COMPRA FUERTE', icon: '\u{1F4C8}', cls: 'buy', color: '#00e49d' },
@@ -503,7 +503,7 @@ function App() {
                 <span className="card-title">Indicadores Tecnicos</span>
                 <span className="badge">4H</span>
               </div>
-              {signal.technical?.indicators && Object.entries(signal.technical.indicators).slice(0, 7).map(([k, v]) => (
+              {signal.technical?.indicators && Object.entries(signal.technical.indicators).filter(([k, v]) => typeof v === 'number').slice(0, 7).map(([k, v]) => (
                 <div className="ind-row" key={k}>
                   <span className="ind-name">{k.replace(/_/g, ' ').toUpperCase()}</span>
                   <span className={`ind-val ${signal.technical.interpretation?.[k]?.includes('BUY') ? 'buy' : signal.technical.interpretation?.[k]?.includes('SELL') ? 'sell' : 'neutral'}`}>
@@ -511,7 +511,7 @@ function App() {
                   </span>
                 </div>
               ))}
-              {signal.technical?.indicators?.rsi !== undefined && <RSIBar value={signal.technical.indicators.rsi} />}
+              {signal.technical?.indicators?.rsi_14 !== undefined && <RSIBar value={signal.technical.indicators.rsi_14} />}
             </div>
 
             <div className="card">

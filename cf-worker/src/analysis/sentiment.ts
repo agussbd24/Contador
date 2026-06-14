@@ -66,5 +66,11 @@ export function analyzeSentiment(sourceScores: Record<string, number>, fearGreed
 
   const normalized = Math.max(-10, Math.min(10, weightedScore * 10));
 
-  return { score: normalized, classification, breakdown: sourceScores };
+  const interpretation: Record<string, string> = {};
+  interpretation.overall = classification.replace('_', ' ');
+  interpretation.fear_greed = fearGreed > 70 ? 'Codicia extrema' : fearGreed < 30 ? 'Miedo extremo' : 'Neutral';
+  interpretation.reddit = sourceScores.reddit > 0.3 ? 'Positivo' : sourceScores.reddit < -0.3 ? 'Negativo' : 'Neutral';
+  interpretation.news = sourceScores.news > 0.3 ? 'Positivo' : sourceScores.news < -0.3 ? 'Negativo' : 'Neutral';
+
+  return { score: normalized, classification, breakdown: sourceScores, interpretation };
 }

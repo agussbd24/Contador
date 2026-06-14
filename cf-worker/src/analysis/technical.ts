@@ -102,7 +102,17 @@ export function analyzeTechnical(klines: Kline[]): TechnicalScore {
 
   const normalized = Math.max(-10, Math.min(10, score));
 
-  return { raw: score, normalized, indicators };
+  const interpretation: Record<string, string> = {};
+  interpretation.rsi_14 = indicators.rsi_14 > 70 ? 'SELL - Sobrecompra' : indicators.rsi_14 < 30 ? 'BUY - Sobreventa' : 'NEUTRAL';
+  interpretation.macd_histogram = indicators.macd_histogram > 0 ? 'BUY - Momentum alcista' : 'SELL - Momentum bajista';
+  interpretation.ema_9 = indicators.ema_9 > indicators.ema_21 ? 'BUY - Sobre EMA21' : 'SELL - Bajo EMA21';
+  interpretation.ema_21 = indicators.ema_21 > indicators.ema_50 ? 'BUY - Sobre EMA50' : 'SELL - Bajo EMA50';
+  interpretation.bb_width = indicators.bb_width < 0.05 ? 'Baja volatilidad' : 'Alta volatilidad';
+  interpretation.vwap = closes[closes.length - 1] > indicators.vwap ? 'BUY - Sobre VWAP' : 'SELL - Bajo VWAP';
+  interpretation.obv_trend = indicators.obv_trend === 'up' ? 'BUY - Volumen creciente' : 'SELL - Volumen decreciente';
+  interpretation.volume_ratio = indicators.volume_ratio > 1.5 ? 'ALERTA - Volumen alto' : 'NORMAL';
+
+  return { raw: score, normalized, indicators, interpretation };
 }
 
 // ─── INDICATOR FUNCTIONS ───
