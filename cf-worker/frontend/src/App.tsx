@@ -136,12 +136,19 @@ function App() {
         fetchSignal(), fetchMarket(), fetchHistory(), checkHealth(),
         fetchMarketOverview(), fetchPriceHistory(),
       ]);
-      if (sig.status === 'fulfilled' && sig.value) setSignal(sig.value);
+      if (sig.status === 'fulfilled' && sig.value) {
+        setSignal(sig.value);
+        setPriceHistory(prev => {
+          // Seed with API data on first load, then append
+          if (prev.length < 2 && ph.status === 'fulfilled' && ph.value.length > 0) return ph.value;
+          const next = [...prev, sig.value.price];
+          return next.length > 60 ? next.slice(-60) : next;
+        });
+      }
       if (mkt.status === 'fulfilled' && mkt.value) setMarket(mkt.value);
       if (ov.status === 'fulfilled' && ov.value) setOverview(ov.value);
       if (hist.status === 'fulfilled') setHistory(hist.value);
       if (h.status === 'fulfilled') setHealthy(h.value);
-      if (ph.status === 'fulfilled' && ph.value.length > 0) setPriceHistory(ph.value);
       setLastUpdate(new Date());
       if (sig.status === 'rejected' && mkt.status === 'rejected') setError('No se pudo conectar a la API');
     } catch (e: any) { setError(e.message); } finally { setLoading(false); }
@@ -267,7 +274,7 @@ function App() {
                 </div>
               </div>
               <div className="sparkline-container">
-                <Sparkline data={priceHistory.length > 1 ? priceHistory : Array.from({length: 20}, (_, i) => signal.price + Math.sin(i * 0.5) * signal.price * 0.015)} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} />
+                <Sparkline data={priceHistory.length > 1 ? priceHistory : []} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} />
               </div>
               <div className="stat-row"><span className="stat-label">Mcap SOL</span><span className="stat-value">{ars(Math.round((market?.coingecko?.market_cap ?? 0) * dBlue / 1e9))}M ARS</span></div>
               <div className="stat-row"><span className="stat-label">ATH</span><span className="stat-value">{ars(toARS(market?.coingecko?.ath ?? 0))}</span></div>

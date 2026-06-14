@@ -1,6 +1,25 @@
 import { CONFIG } from '../types/config';
 
-export async function fetchDolarArg(): Promise<{ blue: number; oficial: number; tarjeta: number }> {
+let cachedDolar: { blue: number; oficial: number; tarjeta: number; ts: number } | null = null;
+
+export async function fetchDolarArg(kv?: KVNamespace): Promise<{ blue: number; oficial: number; tarjeta: number }> {
+  const now = Date.now();
+
+  // Check memory cache (10 min)
+  if (cachedDolar && now - cachedDolar.ts < 600000) {
+    return { blue: cachedDolar.blue, oficial: cachedDolar.oficial, tarjeta: cachedDolar.tarjeta };
+  }
+
+  // Check KV cache (10 min)
+  if (kv) {
+    try {
+      const cached = await kv.get('dolar_arg', { type: 'json' }) as { blue: number; oficial: number; tarjeta: number; ts: number } | null;
+      if (cached && now - cached.ts < 600000) {
+        cachedDolar = cached;
+        return { blue: cached.blue, oficial: cached.oficial, tarjeta: cached.tarjeta };
+      }
+    } catch {}
+  }
   // Try multiple free APIs for Argentine dollar
   const tryApi = async (url: string, parser: (data: any) => { blue: number; oficial: number; tarjeta: number } | null): Promise<{ blue: number; oficial: number; tarjeta: number } | null> => {
     try {
@@ -23,7 +42,7 @@ export async function fetchDolarArg(): Promise<{ blue: number; oficial: number; 
       tarjeta: tarjeta?.venta ? Math.round(tarjeta.venta) : Math.round(blue.venta * 1.3),
     };
   });
-  if (r1 && r1.blue > 100) return r1;
+  if (r1 && r1.blue > 100) { await saveDolarCache(r1, kv); return r1; }
 
   // API 2: dolarapi.com
   const r2 = await tryApi('https://dolarapi.com/v1/dolares', (data) => {
@@ -37,7 +56,7 @@ export async function fetchDolarArg(): Promise<{ blue: number; oficial: number; 
       tarjeta: tarjeta?.venta ? Math.round(tarjeta.venta) : Math.round(blue.venta * 1.3),
     };
   });
-  if (r2 && r2.blue > 100) return r2;
+  if (r2 && r2.blue > 100) { await saveDolarCache(r2, kv); return r2; }
 
   // API 3: criptoya.com
   const r3 = await tryApi('https://criptoya.com/api/dolar', (data) => {
@@ -48,9 +67,17 @@ export async function fetchDolarArg(): Promise<{ blue: number; oficial: number; 
       tarjeta: data.tarjeta?.price ? Math.round(data.tarjeta.price) : Math.round(data.blue.price * 1.3),
     };
   });
-  if (r3 && r3.blue > 100) return r3;
+  if (r3 && r3.blue > 100) { await saveDolarCache(r3, kv); return r3; }
 
   return { blue: 1200, oficial: 1050, tarjeta: 1560 };
+}
+
+async function saveDolarCache(d: { blue: number; oficial: number; tarjeta: number }, kv?: KVNamespace): Promise<void> {
+  const entry = { ...d, ts: Date.now() };
+  cachedDolar = entry;
+  if (kv) {
+    try { await kv.put('dolar_arg', JSON.stringify(entry), { expirationTtl: 600 }); } catch {}
+  }
 }
 
 export async function fetchFearGreed(): Promise<{ value: number; classification: string }> {

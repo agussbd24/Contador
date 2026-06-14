@@ -100,7 +100,7 @@ async function handleHealth(env: Env): Promise<Response> {
 }
 
 async function handlePrice(): Promise<Response> {
-  const [ticker, dolar] = await Promise.all([fetchTicker(), fetchDolarArg()]);
+  const [ticker, dolar] = await Promise.all([fetchTicker(), fetchDolarArg(env.KV)]);
   return json({
     ...ticker,
     ars: {
@@ -121,7 +121,7 @@ async function handleSignal(env: Env): Promise<Response> {
   const ticker = await fetchTicker();
   const klines = await fetchAllKlines();
   const fg = await fetchFearGreed();
-  const dolar = await fetchDolarArg();
+  const dolar = await fetchDolarArg(env.KV);
 
   const techResult = analyzeTechnical(klines['4h'] || []);
   const onchainResult = analyzeOnChain({
@@ -182,7 +182,7 @@ async function handleSignal(env: Env): Promise<Response> {
 }
 
 async function handleMarket(env: Env): Promise<Response> {
-  const [ticker, fg, cg, dolar] = await Promise.all([fetchTicker(), fetchFearGreed(), fetchCoinGecko(), fetchDolarArg()]);
+  const [ticker, fg, cg, dolar] = await Promise.all([fetchTicker(), fetchFearGreed(), fetchCoinGecko(), fetchDolarArg(env.KV)]);
   return json({
     ticker: {
       ...ticker,
@@ -213,7 +213,7 @@ async function runAnalysisAndAlert(env: Env): Promise<void> {
   const ticker = await fetchTicker();
   const klines = await fetchAllKlines();
   const fg = await fetchFearGreed();
-  const dolar = await fetchDolarArg();
+  const dolar = await fetchDolarArg(env.KV);
 
   const techResult = analyzeTechnical(klines['4h'] || []);
   const onchainResult = analyzeOnChain({
@@ -288,7 +288,7 @@ async function handleMarketOverview(): Promise<Response> {
     fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT').then(r => r.json()).catch(() => null),
     fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=SOLUSDT').then(r => r.json()).catch(() => null),
     fetchFearGreed(),
-    fetchDolarArg(),
+    fetchDolarArg(env.KV),
   ]);
 
   const totalCrypto = await fetch('https://api.coingecko.com/api/v3/global').then(r => r.json()).catch(() => null);
