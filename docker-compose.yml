@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: solana_quant_db
+    environment:
+      POSTGRES_DB: solana_quant
+      POSTGRES_USER: solana_quant
+      POSTGRES_PASSWORD: solana_quant
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: solana_quant_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: solana_quant_backend
+    environment:
+      DATABASE_URL: postgresql://solana_quant:solana_quant@postgres:5432/solana_quant
+      REDIS_URL: redis://redis:6379/0
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app/backend
+      - ml_models:/app/backend/ml/models
+      - logs:/app/logs
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    command: python -m backend.main
+
+volumes:
+  postgres_data:
+  redis_data:
+  ml_models:
+  logs:
