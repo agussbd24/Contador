@@ -137,7 +137,7 @@ function App() {
 
   useEffect(() => {
     loadData();
-    const id = setInterval(loadData, 15000);
+    const id = setInterval(loadData, 5000);
     return () => clearInterval(id);
   }, [loadData]);
 
@@ -196,7 +196,10 @@ function App() {
             <div className="top-sub">Solana</div>
           </div>
         </div>
-        <div className={`status-dot ${healthy ? 'online' : 'offline'}`} />
+        <div className="status-right">
+          <span className="live-badge">LIVE</span>
+          <div className={`status-dot ${healthy ? 'online' : 'offline'}`} />
+        </div>
       </header>
 
       <section className="price-hero">
