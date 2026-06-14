@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchSignal, fetchMarket, fetchHistory, checkHealth, fetchMarketOverview, fetchPriceHistory, SignalData, MarketData, MarketOverview } from './api';
 
 /* ─── HELPERS ─── */
@@ -18,14 +18,15 @@ const sigMap: Record<string, { label: string; icon: string; cls: string; color: 
 };
 
 /* ─── SPARKLINE ─── */
-function Sparkline({ data, color }: { data: number[]; color: string }) {
+function Sparkline({ data, color, dolar }: { data: number[]; color: string; dolar: number }) {
   if (!data.length) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  const arsData = data.map(v => v * dolar);
+  const min = Math.min(...arsData);
+  const max = Math.max(...arsData);
   const range = max - min || 1;
   const h = 50;
   const w = 300;
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
+  const pts = arsData.map((v, i) => `${(i / (arsData.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
   const fillPts = `0,${h} ${pts} ${w},${h}`;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
@@ -51,18 +52,11 @@ function SignalGauge({ confidence, signal }: { confidence: number; signal: strin
   const rad = (angle * Math.PI) / 180;
   const nx = cx + r * Math.cos(rad);
   const ny = cy + r * Math.sin(rad);
-
-  const arcPath = (startAngle: number, endAngle: number) => {
-    const s1 = (startAngle * Math.PI) / 180;
-    const e1 = (endAngle * Math.PI) / 180;
-    const x1 = cx + r * Math.cos(s1);
-    const y1 = cy + r * Math.sin(s1);
-    const x2 = cx + r * Math.cos(e1);
-    const y2 = cy + r * Math.sin(e1);
-    const large = endAngle - startAngle > 180 ? 1 : 0;
-    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  const arcPath = (sa: number, ea: number) => {
+    const s1 = (sa * Math.PI) / 180;
+    const e1 = (ea * Math.PI) / 180;
+    return `M ${cx + r * Math.cos(s1)} ${cy + r * Math.sin(s1)} A ${r} ${r} 0 ${ea - sa > 180 ? 1 : 0} 1 ${cx + r * Math.cos(e1)} ${cy + r * Math.sin(e1)}`;
   };
-
   return (
     <div className="gauge-container">
       <svg className="gauge-svg" viewBox="0 0 180 100">
@@ -71,10 +65,8 @@ function SignalGauge({ confidence, signal }: { confidence: number; signal: strin
           style={{ filter: `drop-shadow(0 0 6px ${s.color}40)`, transition: 'all 1s cubic-bezier(0.22,1,0.36,1)' }} />
         <circle cx={nx} cy={ny} r="5" fill="#fff" stroke={s.color} strokeWidth="2"
           style={{ filter: `drop-shadow(0 0 4px ${s.color})`, transition: 'all 1s cubic-bezier(0.22,1,0.36,1)' }} />
-        <text x={cx} y={cy - 8} textAnchor="middle" fill={s.color} fontSize="22" fontWeight="800"
-          style={{ transition: 'fill 0.5s' }}>{confidence}%</text>
-        <text x={cx} y={cy + 6} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8"
-          textTransform="uppercase" letterSpacing="1">confianza</text>
+        <text x={cx} y={cy - 8} textAnchor="middle" fill={s.color} fontSize="22" fontWeight="800">{confidence}%</text>
+        <text x={cx} y={cy + 6} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" letterSpacing="1">CONFIANZA</text>
       </svg>
     </div>
   );
@@ -100,30 +92,25 @@ function RSIBar({ value }: { value: number }) {
 
 /* ─── SENTIMENT ARC ─── */
 function SentimentArc({ score }: { score: number }) {
-  const pct = Math.max(0, Math.min(100, (score + 1) * 50));
-  const angle = -180 + (pct / 100) * 180;
+  const p = Math.max(0, Math.min(100, (score + 1) * 50));
+  const angle = -180 + (p / 100) * 180;
   const r = 40;
   const cx = 50;
   const cy = 45;
-  const rad = (angle * Math.PI) / 180;
-  const nx = cx + r * Math.cos(rad);
-  const ny = cy + r * Math.sin(rad);
-  const color = pct > 60 ? '#00e49d' : pct < 40 ? '#ff4d6a' : '#fbbf24';
-
+  const color = p > 60 ? '#00e49d' : p < 40 ? '#ff4d6a' : '#fbbf24';
   const arcPath = (sa: number, ea: number) => {
     const s1 = (sa * Math.PI) / 180;
     const e1 = (ea * Math.PI) / 180;
     return `M ${cx + r * Math.cos(s1)} ${cy + r * Math.sin(s1)} A ${r} ${r} 0 ${ea - sa > 180 ? 1 : 0} 1 ${cx + r * Math.cos(e1)} ${cy + r * Math.sin(e1)}`;
   };
-
+  const rad = (angle * Math.PI) / 180;
   return (
     <div className="sentiment-arc">
       <svg viewBox="0 0 100 55" style={{ width: '140px' }}>
         <path d={arcPath(-180, 0)} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" strokeLinecap="round" />
-        <path d={arcPath(-180, angle)} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
-          style={{ transition: 'all 0.8s' }} />
-        <circle cx={nx} cy={ny} r="3" fill="#fff" style={{ transition: 'all 0.8s' }} />
-        <text x={cx} y={cy - 2} textAnchor="middle" fill={color} fontSize="12" fontWeight="800">{pct.toFixed(0)}%</text>
+        <path d={arcPath(-180, angle)} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" style={{ transition: 'all 0.8s' }} />
+        <circle cx={cx + r * Math.cos(rad)} cy={cy + r * Math.sin(rad)} r="3" fill="#fff" style={{ transition: 'all 0.8s' }} />
+        <text x={cx} y={cy - 2} textAnchor="middle" fill={color} fontSize="12" fontWeight="800">{p.toFixed(0)}%</text>
         <text x={cx} y={cy + 8} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="5" letterSpacing="0.5">SENTIMIENTO</text>
       </svg>
     </div>
@@ -141,7 +128,6 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
-  const priceFlash = useRef<'up' | 'down' | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -158,11 +144,7 @@ function App() {
       if (ph.status === 'fulfilled' && ph.value.length > 0) setPriceHistory(ph.value);
       setLastUpdate(new Date());
       if (sig.status === 'rejected' && mkt.status === 'rejected') setError('No se pudo conectar a la API');
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -175,7 +157,8 @@ function App() {
   const s = signal ? (sigMap[signal.signal] || sigMap.HOLD) : sigMap.HOLD;
   const isUp = (market?.ticker?.change_24h ?? 0) >= 0;
 
-  /* ─── SKELETON ─── */
+  const toARS = (usdPrice: number) => Math.round(usdPrice * dBlue);
+
   if (loading && !signal) return (
     <div className="app">
       <div className="header">
@@ -196,7 +179,6 @@ function App() {
     </div>
   );
 
-  /* ─── ERROR ─── */
   if (error && !signal) return (
     <div className="app">
       <div className="error-screen">
@@ -216,13 +198,11 @@ function App() {
           <div className="logo">{'\u26A1'}</div>
           <div>
             <div className="header-title">Solana Quant</div>
-            <div className="header-sub">Motor de señales SOL 24/7</div>
+            <div className="header-sub">Señales SOL en pesos argentinos</div>
           </div>
         </div>
         <div className="header-right">
-          <div className={`pill ${healthy ? 'pill-green' : 'pill-red'}`}>
-            <span className="dot" />{healthy ? 'Online' : 'Offline'}
-          </div>
+          <div className={`pill ${healthy ? 'pill-green' : 'pill-red'}`}><span className="dot" />{healthy ? 'Online' : 'Offline'}</div>
           <div className="pill pill-yellow">{'\u{1F1E6}\u{1F1F7}'} Blue ${dBlue.toLocaleString()}</div>
           {lastUpdate && <div className="pill pill-blue">{lastUpdate.toLocaleTimeString('es-AR')}</div>}
         </div>
@@ -231,21 +211,21 @@ function App() {
       {/* ─── TICKER STRIP ─── */}
       <div className="ticker-strip animate-in" style={{ animationDelay: '0.05s' }}>
         <div className="ticker-item">
-          <div className="ticker-label">SOL</div>
-          <div className="ticker-value" style={{ color: isUp ? 'var(--green)' : 'var(--red)' }}>{usd(signal?.price ?? 0)}</div>
+          <div className="ticker-label">SOL / ARS</div>
+          <div className="ticker-value" style={{ color: isUp ? 'var(--green)' : 'var(--red)', fontSize: '1.05rem' }}>{ars(toARS(signal?.price ?? 0))}</div>
           <div className="ticker-sub" style={{ color: isUp ? 'var(--green)' : 'var(--red)' }}>{pct(market?.ticker?.change_24h ?? 0)}</div>
         </div>
         {overview?.btc && (
           <div className="ticker-item">
-            <div className="ticker-label">BTC</div>
-            <div className="ticker-value" style={{ color: overview.btc.change_24h >= 0 ? 'var(--green)' : 'var(--red)' }}>{usd(overview.btc.price)}</div>
+            <div className="ticker-label">BTC / ARS</div>
+            <div className="ticker-value" style={{ color: overview.btc.change_24h >= 0 ? 'var(--green)' : 'var(--red)' }}>{ars(toARS(overview.btc.price))}</div>
             <div className="ticker-sub" style={{ color: overview.btc.change_24h >= 0 ? 'var(--green)' : 'var(--red)' }}>{pct(overview.btc.change_24h)}</div>
           </div>
         )}
         {overview?.eth && (
           <div className="ticker-item">
-            <div className="ticker-label">ETH</div>
-            <div className="ticker-value" style={{ color: overview.eth.change_24h >= 0 ? 'var(--green)' : 'var(--red)' }}>{usd(overview.eth.price)}</div>
+            <div className="ticker-label">ETH / ARS</div>
+            <div className="ticker-value" style={{ color: overview.eth.change_24h >= 0 ? 'var(--green)' : 'var(--red)' }}>{ars(toARS(overview.eth.price))}</div>
             <div className="ticker-sub" style={{ color: overview.eth.change_24h >= 0 ? 'var(--green)' : 'var(--red)' }}>{pct(overview.eth.change_24h)}</div>
           </div>
         )}
@@ -257,14 +237,14 @@ function App() {
           <div className="ticker-sub">{market?.fear_greed?.classification ?? '-'}</div>
         </div>
         <div className="ticker-item">
-          <div className="ticker-label">Mcap Total</div>
-          <div className="ticker-value">${((overview?.total_market_cap ?? 0) / 1e12).toFixed(2)}T</div>
-          <div className="ticker-sub">BTC Dom: {(overview?.btc_dominance ?? 0).toFixed(1)}%</div>
+          <div className="ticker-label">Blue</div>
+          <div className="ticker-value" style={{ color: 'var(--yellow)' }}>${dBlue.toLocaleString()}</div>
+          <div className="ticker-sub">Oficial: ${(market?.dolar?.oficial ?? 1050).toLocaleString()}</div>
         </div>
         <div className="ticker-item">
-          <div className="ticker-label">Blue</div>
-          <div className="ticker-value" style={{ color: 'var(--yellow)' }}>${(market?.dolar?.blue ?? dBlue).toLocaleString()}</div>
-          <div className="ticker-sub">Oficial: ${(market?.dolar?.oficial ?? 1050).toLocaleString()}</div>
+          <div className="ticker-label">Mcap</div>
+          <div className="ticker-value">${((overview?.total_market_cap ?? 0) / 1e12).toFixed(1)}T</div>
+          <div className="ticker-sub">BTC: {(overview?.btc_dominance ?? 0).toFixed(0)}%</div>
         </div>
       </div>
 
@@ -276,22 +256,21 @@ function App() {
             <div className="card">
               <div className="card-glow glow-blue" />
               <div className="card-header">
-                <span className="card-title">SOL / USDT</span>
-                <span className="badge">Binance Spot</span>
+                <span className="card-title">SOL / ARS</span>
+                <span className="badge">Binance {'\u2192'} ARS</span>
               </div>
               <div className="price-section">
-                <div className="price-usd">{usd(signal.price)}</div>
-                <div className="price-ars">{ars(Math.round(signal.price * dBlue))} ARS</div>
+                <div className="price-usd">{ars(toARS(signal.price))}</div>
+                <div className="price-ars">{usd(signal.price)} <span style={{ opacity: 0.5 }}>USD</span></div>
                 <div className={`price-change ${isUp ? 'up' : 'down'}`}>
                   {isUp ? '\u25B2' : '\u25BC'} {pct(Math.abs(market?.ticker?.change_24h ?? 0))} 24h
                 </div>
               </div>
               <div className="sparkline-container">
-                <Sparkline data={priceHistory.length > 1 ? priceHistory : Array.from({length: 20}, (_, i) => signal.price + Math.sin(i * 0.5) * signal.price * 0.015)} color={isUp ? '#00e49d' : '#ff4d6a'} />
+                <Sparkline data={priceHistory.length > 1 ? priceHistory : Array.from({length: 20}, (_, i) => signal.price + Math.sin(i * 0.5) * signal.price * 0.015)} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} />
               </div>
-              <div className="stat-row"><span className="stat-label">Mcap SOL</span><span className="stat-value">${((market?.coingecko?.market_cap ?? 0) / 1e9).toFixed(1)}B</span></div>
-              <div className="stat-row"><span className="stat-label">Rank</span><span className="stat-value">#{market?.coingecko?.market_cap_rank ?? '-'}</span></div>
-              <div className="stat-row"><span className="stat-label">ATH</span><span className="stat-value">{usd(market?.coingecko?.ath ?? 0)}</span></div>
+              <div className="stat-row"><span className="stat-label">Mcap SOL</span><span className="stat-value">{ars(Math.round((market?.coingecko?.market_cap ?? 0) * dBlue / 1e9))}M ARS</span></div>
+              <div className="stat-row"><span className="stat-label">ATH</span><span className="stat-value">{ars(toARS(market?.coingecko?.ath ?? 0))}</span></div>
               <div className="stat-row"><span className="stat-label">7d</span><span className="stat-value" style={{ color: (market?.coingecko?.price_change_7d ?? 0) >= 0 ? 'var(--green)' : 'var(--red)' }}>{pct(market?.coingecko?.price_change_7d ?? 0)}</span></div>
             </div>
 
@@ -326,20 +305,19 @@ function App() {
               <div className="risk-grid">
                 <div className="risk-box">
                   <div className="risk-label">Stop Loss</div>
-                  <div className="risk-usd" style={{ color: 'var(--red)' }}>{usd(signal.risk_levels?.stop_loss ?? 0)}</div>
-                  <div className="risk-ars">{ars(Math.round((signal.risk_levels?.stop_loss ?? 0) * dBlue))}</div>
+                  <div className="risk-usd" style={{ color: 'var(--red)' }}>{ars(toARS(signal.risk_levels?.stop_loss ?? 0))}</div>
+                  <div className="risk-ars">{usd(signal.risk_levels?.stop_loss ?? 0)}</div>
                 </div>
                 <div className="risk-box">
                   <div className="risk-label">Take Profit</div>
-                  <div className="risk-usd" style={{ color: 'var(--green)' }}>{usd(signal.risk_levels?.take_profit ?? 0)}</div>
-                  <div className="risk-ars">{ars(Math.round((signal.risk_levels?.take_profit ?? 0) * dBlue))}</div>
+                  <div className="risk-usd" style={{ color: 'var(--green)' }}>{ars(toARS(signal.risk_levels?.take_profit ?? 0))}</div>
+                  <div className="risk-ars">{usd(signal.risk_levels?.take_profit ?? 0)}</div>
                 </div>
                 <div className="risk-box">
                   <div className="risk-label">R:R Ratio</div>
                   <div className="risk-usd" style={{ color: 'var(--purple)' }}>{$(signal.risk_levels?.rr_ratio ?? 0)}x</div>
                 </div>
               </div>
-
               <div style={{ marginTop: 12 }}>
                 <div className="card-title" style={{ marginBottom: 8 }}>Breakdown</div>
                 {signal.breakdown && Object.entries(signal.breakdown).map(([k, v]) => (
@@ -354,7 +332,6 @@ function App() {
 
           {/* ─── ROW 2: INDICADORES + SENTIMENT + ON-CHAIN ─── */}
           <div className="grid g3 animate-in" style={{ animationDelay: '0.15s' }}>
-            {/* TECNICOS */}
             <div className="card">
               <div className="card-glow glow-green" />
               <div className="card-header">
@@ -372,12 +349,9 @@ function App() {
               {signal.technical?.indicators?.rsi !== undefined && <RSIBar value={signal.technical.indicators.rsi} />}
             </div>
 
-            {/* SENTIMIENTO */}
             <div className="card">
               <div className="card-glow glow-blue" />
-              <div className="card-header">
-                <span className="card-title">Sentimiento</span>
-              </div>
+              <div className="card-header"><span className="card-title">Sentimiento</span></div>
               <SentimentArc score={signal.sentiment?.score ?? 0} />
               <div style={{ marginTop: 4 }}>
                 {signal.sentiment?.interpretation && Object.entries(signal.sentiment.interpretation).slice(0, 4).map(([k, v]) => (
@@ -387,19 +361,8 @@ function App() {
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: 8, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                <div className="card-title" style={{ marginBottom: 6 }}>Volumen por Sentimiento</div>
-                <div className="mini-bars">
-                  {Array.from({length: 20}, (_, i) => {
-                    const h = 10 + Math.random() * 30;
-                    const positive = Math.random() > 0.4;
-                    return <div key={i} className="mini-bar" style={{ height: `${h}px`, background: positive ? 'var(--green)' : 'var(--red)', opacity: 0.6 }} />;
-                  })}
-                </div>
-              </div>
             </div>
 
-            {/* ON-CHAIN */}
             <div className="card">
               <div className="card-glow glow-red" />
               <div className="card-header">
@@ -414,26 +377,14 @@ function App() {
                   </span>
                 </div>
               ))}
-              <div style={{ marginTop: 8, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                <div className="card-title" style={{ marginBottom: 6 }}>Actividad Reciente</div>
-                <div className="mini-bars">
-                  {Array.from({length: 15}, (_, i) => {
-                    const h = 5 + Math.random() * 35;
-                    return <div key={i} className="mini-bar" style={{ height: `${h}px`, background: 'var(--blue)', opacity: 0.4 + Math.random() * 0.4 }} />;
-                  })}
-                </div>
-              </div>
             </div>
           </div>
 
           {/* ─── ROW 3: MULTI-TF + HISTORY ─── */}
           <div className="grid g-left animate-in" style={{ animationDelay: '0.2s' }}>
-            {/* MULTI-TIMEFRAME */}
             <div className="card">
               <div className="card-glow glow-purple" />
-              <div className="card-header">
-                <span className="card-title">Analisis Multi-Timeframe</span>
-              </div>
+              <div className="card-header"><span className="card-title">Analisis Multi-Timeframe</span></div>
               <div className="tf-grid">
                 {[
                   { tf: '5m', sig: signal.signal, conf: Math.min(95, signal.confidence + 12) },
@@ -456,23 +407,18 @@ function App() {
                 <div className="card-title" style={{ marginBottom: 6 }}>Confluencia</div>
                 <div className="signal-bar-container">
                   <div className="signal-bar-track">
-                    <div className="signal-bar-marker" style={{ left: '55%', borderColor: 'var(--blue)' }} />
+                    <div className="signal-bar-marker" style={{ left: `${signal.confidence}%`, borderColor: 'var(--blue)' }} />
                   </div>
-                  <div className="signal-bar-labels">
-                    <span>Baja</span>
-                    <span style={{ color: 'var(--blue)' }}>Media</span>
-                    <span>Alta</span>
-                  </div>
+                  <div className="signal-bar-labels"><span>Baja</span><span style={{ color: 'var(--blue)' }}>Media</span><span>Alta</span></div>
                 </div>
               </div>
             </div>
 
-            {/* HISTORY */}
             <div className="card">
               <div className="card-glow glow-blue" />
               <div className="card-header">
-                <span className="card-title">Historial</span>
-                <span className="badge">{history.length} señales</span>
+                <span className="card-title">Historial de Senales</span>
+                <span className="badge">{history.length} senales</span>
               </div>
               <div className="hist-list">
                 {history.slice(0, 12).map((h, i) => {
@@ -482,7 +428,7 @@ function App() {
                       <span className="hist-time">{new Date(h.time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
                       <span className="hist-signal" style={{ background: `${sc.color}15`, color: sc.color, border: `1px solid ${sc.color}25` }}>{sc.label}</span>
                       <span className="hist-conf">{h.confidence}%</span>
-                      <span className="hist-price">{usd(h.price)}</span>
+                      <span className="hist-price">{ars(toARS(h.price))}</span>
                     </div>
                   );
                 })}
@@ -493,7 +439,7 @@ function App() {
       )}
 
       <div className="footer">
-        Solana Quant Platform v2.0 {'\u2014'} Cloudflare Workers {'\u2014'} Alertas Telegram {'\u2014'} Precios ARS
+        Solana Quant Platform v2.0 {'\u2014'} Cloudflare Workers {'\u2014'} Precios en pesos argentinos
       </div>
     </div>
   );
