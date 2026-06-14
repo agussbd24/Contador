@@ -25,7 +25,8 @@ export function formatSignalAlert(data: any): string {
     '\u2501'.repeat(28),
     '',
     `\u{1F4CA} Confidence: <b>${data.confidence}%</b>`,
-    `\u{1F4B0} Price: <b>$${data.price?.toLocaleString()}</b>`,
+    `\u{1F4B0} Price: <b>$${data.price?.toLocaleString()} USD</b>`,
+    `\u{1F1E6}\u{1F1F7} Price ARS: <b>$${data.ars?.price?.toLocaleString()} ARS</b>`,
     '',
     `\u{1F4C8} Technical: <b>${data.breakdown?.technical > 0 ? '+' : ''}${data.breakdown?.technical?.toFixed(1)}/10</b>`,
     `\u{1F517} On-Chain: <b>${data.breakdown?.onchain > 0 ? '+' : ''}${data.breakdown?.onchain?.toFixed(1)}/10</b>`,
@@ -36,10 +37,16 @@ export function formatSignalAlert(data: any): string {
     lines.push(
       '',
       '\u26A1 Risk Management',
-      `   Entry: <b>$${data.risk_levels.entry.toLocaleString()}</b>`,
-      `   Stop Loss: <b>$${data.risk_levels.stop_loss?.toLocaleString()}</b>`,
-      `   Take Profit: <b>$${data.risk_levels.take_profit?.toLocaleString()}</b>`,
+      `   Entry: <b>$${data.risk_levels.entry.toLocaleString()} USD</b>`,
+      `   Stop Loss: <b>$${data.risk_levels.stop_loss?.toLocaleString()} USD</b>`,
+      `   Take Profit: <b>$${data.risk_levels.take_profit?.toLocaleString()} USD</b>`,
       `   RR: <b>${data.risk_levels.rr_ratio}:1</b>`,
+      '',
+      `\u{1F1E6}\u{1F1F7} ARS`,
+      `   Entry: <b>$${data.ars?.price?.toLocaleString()} ARS</b>`,
+      `   SL: <b>$${data.ars?.stop_loss?.toLocaleString()} ARS</b>`,
+      `   TP: <b>$${data.ars?.take_profit?.toLocaleString()} ARS</b>`,
+      `\u{1F4B1} D\u00F3lar Blue: <b>$${data.dolar?.blue?.toLocaleString()}</b>`,
     );
   }
 
@@ -51,7 +58,8 @@ export function formatDailySummary(signals: any[], price: any): string {
     '\u{1F4CB} <b>DAILY SUMMARY - SOL/USDT</b>',
     '\u2501'.repeat(28),
     '',
-    `\u{1F4B0} Price: <b>$${price?.price?.toLocaleString()}</b> (${price?.change_24h > 0 ? '+' : ''}${price?.change_24h}%)`,
+    `\u{1F4B0} Price: <b>$${price?.price?.toLocaleString()} USD / $${price?.ars?.blue?.toLocaleString()} ARS</b>`,
+    `(\u{1F4C8} ${price?.change_24h > 0 ? '+' : ''}${price?.change_24h}%)`,
     `\u{1F4C8} Signals today: ${signals.length}`,
     '',
     ...signals.slice(0, 5).map((s: any) => {

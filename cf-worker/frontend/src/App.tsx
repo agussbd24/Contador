@@ -37,25 +37,40 @@ function App() {
   }, [loadData]);
 
   const fmt = (n: number, d = 2) => n?.toFixed(d) ?? '-';
-  const fmtPrice = (n: number) => '$' + n?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '-';
+  const fmtUSD = (n: number) => 'US$' + n?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '-';
+  const fmtARS = (n: number) => '$' + n?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) ?? '-';
+  const fmtPrice = (n: number, dolar?: number) => {
+    const ars = dolar ? Math.round(n * dolar) : Math.round(n * 1200);
+    return (
+      <>
+        <div style={{ fontSize: '1.4rem' }}>{fmtUSD(n)}</div>
+        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginTop: 2 }}>{fmtARS(ars)} ARS</div>
+      </>
+    );
+  };
 
   const signalClass = (s: string) => s?.toLowerCase().replace('_', '') || 'hold';
 
-  if (loading && !signal) return <div className="app"><div className="loading">Connecting to Solana Quant...</div></div>;
-  if (error && !signal) return <div className="app"><div className="error">Error: {error}<br /><button onClick={loadData} style={{ marginTop: 10, padding: '8px 16px', cursor: 'pointer' }}>Retry</button></div></div>;
+  if (loading && !signal) return <div className="app"><div className="loading">Conectando a Solana Quant...</div></div>;
+  if (error && !signal) return <div className="app"><div className="error">Error: {error}<br /><button onClick={loadData} style={{ marginTop: 10, padding: '8px 16px', cursor: 'pointer' }}>Reintentar</button></div></div>;
 
   return (
     <div className="app">
       <header className="header">
         <h1>Solana Quant Platform</h1>
-        <div className="subtitle">24/7 AI-Powered SOL Signal Engine</div>
+        <div className="subtitle">24/7 Señales de SOL con precios en pesos argentinos</div>
         <div className={`status ${healthy ? 'online' : 'offline'}`}>
           <span className="dot" />
-          {healthy ? 'System Online' : 'System Offline'}
+          {healthy ? 'Sistema Online' : 'Sistema Offline'}
         </div>
         {lastUpdate && (
           <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 6 }}>
-            Last update: {lastUpdate.toLocaleTimeString()}
+            Última actualización: {lastUpdate.toLocaleTimeString()}
+          </div>
+        )}
+        {market?.dolar?.blue && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--accent-yellow)', marginTop: 4 }}>
+            Dólar Blue: ${market.dolar.blue.toLocaleString()} ARS
           </div>
         )}
       </header>
@@ -68,7 +83,7 @@ function App() {
                 <span className="card-title">SOL / USDT</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>24h</span>
               </div>
-              <div className="price-display">{fmtPrice(signal.price)}</div>
+              <div className="price-display">{fmtPrice(signal.price, market?.dolar?.blue)}</div>
               <div className={`price-change ${market?.ticker?.change_24h >= 0 ? 'positive' : 'negative'}`}>
                 {market?.ticker?.change_24h >= 0 ? '↑' : '↓'} {fmt(Math.abs(market?.ticker?.change_24h ?? 0))}%
               </div>
@@ -104,12 +119,14 @@ function App() {
               </div>
               <div className="risk-levels">
                 <div className="risk-item">
-                  <div className="label">Stop Loss</div>
-                  <div className="value negative">{fmtPrice(signal.risk_levels?.stop_loss)}</div>
+                  <div className="label">Stop Loss (USD)</div>
+                  <div className="value negative">{fmtUSD(signal.risk_levels?.stop_loss)}</div>
+                  <div className="label" style={{ marginTop: 4 }}>{fmtARS(signal.ars?.stop_loss)} ARS</div>
                 </div>
                 <div className="risk-item">
-                  <div className="label">Take Profit</div>
-                  <div className="value positive">{fmtPrice(signal.risk_levels?.take_profit)}</div>
+                  <div className="label">Take Profit (USD)</div>
+                  <div className="value positive">{fmtUSD(signal.risk_levels?.take_profit)}</div>
+                  <div className="label" style={{ marginTop: 4 }}>{fmtARS(signal.ars?.take_profit)} ARS</div>
                 </div>
                 <div className="risk-item">
                   <div className="label">R:R Ratio</div>
@@ -187,7 +204,7 @@ function App() {
                         {h.signal}
                       </span>
                       <span>{fmt(h.confidence)}%</span>
-                      <span>{fmtPrice(h.price)}</span>
+                      <span>{fmtUSD(h.price)} <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>/ {fmtARS(Math.round(h.price * (market?.dolar?.blue || 1200)))} ARS</span></span>
                     </div>
                   ))}
                 </div>
@@ -198,7 +215,7 @@ function App() {
       )}
 
       <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
-        Solana Quant Platform v2.0 — Cloudflare Workers — Alerts via Telegram
+        Solana Quant Platform v2.0 — Cloudflare Workers — Alertas por Telegram — Precios en ARS
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { Env, Signal } from './types';
 import { fetchKlines, fetchTicker, fetchAllKlines } from './fetchers/binance';
-import { fetchFearGreed, fetchCoinGecko } from './fetchers/coingecko';
+import { fetchFearGreed, fetchCoinGecko, fetchDolarArg } from './fetchers/coingecko';
 import { analyzeTechnical } from './analysis/technical';
 import { analyzeOnChain } from './analysis/onchain';
 import { analyzeSentiment } from './analysis/sentiment';
@@ -94,8 +94,16 @@ async function handleHealth(env: Env): Promise<Response> {
 }
 
 async function handlePrice(): Promise<Response> {
-  const ticker = await fetchTicker();
-  return json(ticker);
+  const [ticker, dolar] = await Promise.all([fetchTicker(), fetchDolarArg()]);
+  return json({
+    ...ticker,
+    ars: {
+      blue: Math.round(ticker.price * dolar.blue),
+      oficial: Math.round(ticker.price * dolar.oficial),
+      tarjeta: Math.round(ticker.price * dolar.tarjeta),
+    },
+    dolar,
+  });
 }
 
 async function handleKlines(timeframe: string): Promise<Response> {
@@ -107,6 +115,7 @@ async function handleSignal(env: Env): Promise<Response> {
   const ticker = await fetchTicker();
   const klines = await fetchAllKlines();
   const fg = await fetchFearGreed();
+  const dolar = await fetchDolarArg();
 
   const techResult = analyzeTechnical(klines['4h'] || []);
   const onchainResult = analyzeOnChain({
@@ -142,6 +151,12 @@ async function handleSignal(env: Env): Promise<Response> {
   result.technical = techResult;
   result.onchain = onchainResult;
   result.sentiment = sentimentResult;
+  result.ars = {
+    price: Math.round(ticker.price * dolar.blue),
+    stop_loss: Math.round(result.risk_levels.stop_loss * dolar.blue),
+    take_profit: Math.round(result.risk_levels.take_profit * dolar.blue),
+  };
+  result.dolar = dolar;
 
   // Store in D1
   try {
@@ -161,8 +176,20 @@ async function handleSignal(env: Env): Promise<Response> {
 }
 
 async function handleMarket(env: Env): Promise<Response> {
-  const [ticker, fg, cg] = await Promise.all([fetchTicker(), fetchFearGreed(), fetchCoinGecko()]);
-  return json({ ticker, fear_greed: fg, coingecko: cg });
+  const [ticker, fg, cg, dolar] = await Promise.all([fetchTicker(), fetchFearGreed(), fetchCoinGecko(), fetchDolarArg()]);
+  return json({
+    ticker: {
+      ...ticker,
+      ars: {
+        blue: Math.round(ticker.price * dolar.blue),
+        oficial: Math.round(ticker.price * dolar.oficial),
+        tarjeta: Math.round(ticker.price * dolar.tarjeta),
+      },
+    },
+    fear_greed: fg,
+    coingecko: cg,
+    dolar,
+  });
 }
 
 async function handleSignalHistory(env: Env): Promise<Response> {
@@ -180,6 +207,7 @@ async function runAnalysisAndAlert(env: Env): Promise<void> {
   const ticker = await fetchTicker();
   const klines = await fetchAllKlines();
   const fg = await fetchFearGreed();
+  const dolar = await fetchDolarArg();
 
   const techResult = analyzeTechnical(klines['4h'] || []);
   const onchainResult = analyzeOnChain({
@@ -211,6 +239,12 @@ async function runAnalysisAndAlert(env: Env): Promise<void> {
 
   result = validateRisk(result);
   result.fear_greed = fg.value;
+  result.ars = {
+    price: Math.round(ticker.price * dolar.blue),
+    stop_loss: Math.round(result.risk_levels.stop_loss * dolar.blue),
+    take_profit: Math.round(result.risk_levels.take_profit * dolar.blue),
+  };
+  result.dolar = dolar;
 
   // Store in D1
   try {
