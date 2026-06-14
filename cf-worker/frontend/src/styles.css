@@ -162,6 +162,14 @@ body {
 .buy-card .action-price { color: var(--green); }
 .sell-card .action-price { color: var(--red); }
 
+.action-sub {
+  font-size: 0.65rem;
+  color: var(--text3);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .action-usd {
   font-size: 0.7rem;
   color: var(--text3);
@@ -395,6 +403,41 @@ body {
   font-size: 0.8rem;
   cursor: pointer;
 }
+
+/* ─── EXCHANGES ─── */
+.exchanges-section {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+}
+
+.exchange-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 6px 0;
+  font-size: 0.6rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.exchange-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  align-items: center;
+}
+
+.exchange-row:last-child { border-bottom: none; }
+
+.ex-name { font-weight: 600; text-transform: capitalize; }
+.ex-ask { color: var(--green); font-variant-numeric: tabular-nums; }
+.ex-bid { color: var(--red); font-variant-numeric: tabular-nums; }
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 400px) {

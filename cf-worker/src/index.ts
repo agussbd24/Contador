@@ -1,6 +1,7 @@
 import { Env, Signal } from './types';
 import { fetchKlines, fetchTicker, fetchAllKlines } from './fetchers/binance';
 import { fetchFearGreed, fetchCoinGecko, fetchDolarArg } from './fetchers/coingecko';
+import { fetchCriptoYa } from './fetchers/criptoya';
 import { analyzeTechnical } from './analysis/technical';
 import { analyzeOnChain } from './analysis/onchain';
 import { analyzeSentiment } from './analysis/sentiment';
@@ -57,6 +58,9 @@ export default {
           break;
         case '/price/history':
           response = await handlePriceHistory(url);
+          break;
+        case '/exchanges':
+          response = await handleExchanges();
           break;
         default:
           response = json({ error: 'Not found' }, 404);
@@ -168,7 +172,9 @@ async function handleSignal(env: Env): Promise<Response> {
 }
 
 async function handleMarket(env: Env): Promise<Response> {
-  const [ticker, fg, cg, dolar] = await Promise.all([fetchTicker(), fetchFearGreed(), fetchCoinGecko(), fetchDolarArg(env.KV)]);
+  const [ticker, fg, cg, dolar, exchanges] = await Promise.all([
+    fetchTicker(), fetchFearGreed(), fetchCoinGecko(), fetchDolarArg(env.KV), fetchCriptoYa(),
+  ]);
   return json({
     ticker: {
       ...ticker,
@@ -181,7 +187,18 @@ async function handleMarket(env: Env): Promise<Response> {
     fear_greed: fg,
     coingecko: cg,
     dolar,
+    exchanges: {
+      fiwind: exchanges.fiwind,
+      bestBuy: exchanges.bestBuy,
+      bestSell: exchanges.bestSell,
+      list: exchanges.exchanges.sort((a, b) => a.totalAsk - b.totalAsk),
+    },
   });
+}
+
+async function handleExchanges(): Promise<Response> {
+  const data = await fetchCriptoYa();
+  return json(data);
 }
 
 async function handleSignalHistory(env: Env): Promise<Response> {

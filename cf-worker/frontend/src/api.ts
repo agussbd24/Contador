@@ -33,6 +33,12 @@ export interface MarketData {
   fear_greed: { value: number; classification: string; };
   dolar: { blue: number; oficial: number; tarjeta: number; };
   coingecko?: { market_cap: number; market_cap_rank: number; ath: number; price_change_7d: number; circulating_supply: number; total_supply: number; };
+  exchanges?: {
+    fiwind: { ask: number; bid: number; totalAsk: number; totalBid: number; } | null;
+    bestBuy: { name: string; totalAsk: number; } | null;
+    bestSell: { name: string; totalBid: number; } | null;
+    list: { name: string; ask: number; bid: number; totalAsk: number; totalBid: number; }[];
+  };
 }
 
 export interface MarketOverview {
@@ -44,6 +50,21 @@ export interface MarketOverview {
   total_market_cap: number;
   btc_dominance: number;
   eth_dominance: number;
+}
+
+export interface ExchangePrice {
+  name: string;
+  ask: number;
+  bid: number;
+  totalAsk: number;
+  totalBid: number;
+}
+
+export interface CriptoYaData {
+  exchanges: ExchangePrice[];
+  fiwind: { ask: number; bid: number; totalAsk: number; totalBid: number } | null;
+  bestBuy: ExchangePrice | null;
+  bestSell: ExchangePrice | null;
 }
 
 export async function fetchSignal(): Promise<SignalData> {
@@ -82,6 +103,14 @@ export async function fetchHistory(): Promise<{ time: string; signal: string; co
     const data = await res.json();
     return data.signals || [];
   } catch { return []; }
+}
+
+export async function fetchExchanges(): Promise<CriptoYaData | null> {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/exchanges`, 10000);
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
 }
 
 export async function checkHealth(): Promise<boolean> {

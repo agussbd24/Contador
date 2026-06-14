@@ -153,12 +153,10 @@ function App() {
   const change24h = market?.ticker?.change_24h ?? 0;
   const isUp = change24h >= 0;
 
-  const buyPrice = signal?.risk_levels?.take_profit && signal.signal?.includes('BUY')
-    ? signal.risk_levels.take_profit
-    : solPrice;
-  const sellPrice = signal?.risk_levels?.take_profit && signal.signal?.includes('SELL')
-    ? signal.risk_levels.take_profit
-    : solPrice;
+  const buyPrice = market?.exchanges?.fiwind?.ask || market?.exchanges?.bestBuy?.totalAsk || Math.round(solPrice * dBlue);
+  const sellPrice = market?.exchanges?.fiwind?.bid || market?.exchanges?.bestSell?.totalBid || Math.round(solPrice * dBlue);
+  const buyExchange = market?.exchanges?.bestBuy?.name || 'fiwind';
+  const sellExchange = market?.exchanges?.bestSell?.name || 'fiwind';
 
   const isBuy = signal?.signal?.includes('BUY');
 
@@ -224,13 +222,13 @@ function App() {
       <div className="action-cards">
         <div className="action-card buy-card">
           <div className="action-label">Precio para comprar</div>
-          <div className="action-price">{ars(Math.round(buyPrice * dBlue))}</div>
-          <div className="action-usd">{usd(buyPrice)}</div>
+          <div className="action-price">{ars(buyPrice)}</div>
+          <div className="action-sub">Fiwind</div>
         </div>
         <div className="action-card sell-card">
           <div className="action-label">Precio para vender</div>
-          <div className="action-price">{ars(Math.round(sellPrice * dBlue))}</div>
-          <div className="action-usd">{usd(sellPrice)}</div>
+          <div className="action-price">{ars(sellPrice)}</div>
+          <div className="action-sub">Fiwind</div>
         </div>
       </div>
 
@@ -267,6 +265,25 @@ function App() {
           <div className="detail-val">{ars(market?.dolar?.oficial ?? 0)}</div>
         </div>
       </section>
+
+      {market?.exchanges && (
+        <section className="exchanges-section">
+          <div className="info-title">Comparar exchanges</div>
+          <div className="exchange-header">
+            <span>Exchange</span><span>Comprar</span><span>Vender</span>
+          </div>
+          {[
+            { name: 'Fiwind', ask: market.exchanges.fiwind?.ask, bid: market.exchanges.fiwind?.bid },
+            ...(market.exchanges.list || []).filter(e => e.name !== 'fiwind').slice(0, 6),
+          ].filter(e => e.ask).map((e, i) => (
+            <div className="exchange-row" key={i}>
+              <span className="ex-name">{e.name}</span>
+              <span className="ex-ask">{ars(e.ask!)}</span>
+              <span className="ex-bid">{ars(e.bid!)}</span>
+            </div>
+          ))}
+        </section>
+      )}
 
       {signal?.signal !== 'HOLD' && (
         <section className="signal-section">
