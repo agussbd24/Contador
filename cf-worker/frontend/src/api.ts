@@ -66,9 +66,9 @@ export async function fetchMarketOverview(): Promise<MarketOverview | null> {
   } catch { return null; }
 }
 
-export async function fetchPriceHistory(): Promise<number[]> {
+export async function fetchPriceHistory(days = 1): Promise<number[]> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/price/history`, 10000);
+    const res = await fetchWithTimeout(`${API_BASE}/price/history?days=${days}`, 10000);
     if (!res.ok) return [];
     const data = await res.json();
     return data.prices || [];

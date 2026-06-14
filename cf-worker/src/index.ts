@@ -56,7 +56,7 @@ export default {
           response = await handleMarketOverview();
           break;
         case '/price/history':
-          response = await handlePriceHistory();
+          response = await handlePriceHistory(url);
           break;
         default:
           response = json({ error: 'Not found' }, 404);
@@ -305,11 +305,20 @@ async function handleMarketOverview(): Promise<Response> {
   });
 }
 
-async function handlePriceHistory(): Promise<Response> {
+async function handlePriceHistory(url: URL): Promise<Response> {
   try {
-    const klines = await fetchKlines('1h', 24);
+    const days = parseInt(url.searchParams.get('days') || '1');
+    let timeframe = '1h';
+    let limit = 24;
+    if (days === 1) { timeframe = '1h'; limit = 24; }
+    else if (days === 3) { timeframe = '1h'; limit = 72; }
+    else if (days === 7) { timeframe = '4h'; limit = 42; }
+    else if (days === 30) { timeframe = '1d'; limit = 30; }
+    else { timeframe = '1h'; limit = 24; }
+
+    const klines = await fetchKlines(timeframe, limit);
     const prices = klines.map(k => k.close);
-    return json({ prices, timestamps: klines.map(k => k.timestamp) });
+    return json({ prices, timestamps: klines.map(k => k.timestamp), timeframe, days });
   } catch (e) {
     return json({ prices: [], timestamps: [] });
   }

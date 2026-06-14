@@ -128,23 +128,17 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
+  const [timeRange, setTimeRange] = useState(1);
+  const [loadingChart, setLoadingChart] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [sig, mkt, hist, h, ov, ph] = await Promise.allSettled([
+      const [sig, mkt, hist, h, ov] = await Promise.allSettled([
         fetchSignal(), fetchMarket(), fetchHistory(), checkHealth(),
-        fetchMarketOverview(), fetchPriceHistory(),
+        fetchMarketOverview(),
       ]);
-      if (sig.status === 'fulfilled' && sig.value) {
-        setSignal(sig.value);
-        setPriceHistory(prev => {
-          // Seed with API data on first load, then append
-          if (prev.length < 2 && ph.status === 'fulfilled' && ph.value.length > 0) return ph.value;
-          const next = [...prev, sig.value.price];
-          return next.length > 60 ? next.slice(-60) : next;
-        });
-      }
+      if (sig.status === 'fulfilled' && sig.value) setSignal(sig.value);
       if (mkt.status === 'fulfilled' && mkt.value) setMarket(mkt.value);
       if (ov.status === 'fulfilled' && ov.value) setOverview(ov.value);
       if (hist.status === 'fulfilled') setHistory(hist.value);
@@ -154,11 +148,22 @@ function App() {
     } catch (e: any) { setError(e.message); } finally { setLoading(false); }
   }, []);
 
+  const loadChart = useCallback(async (days: number) => {
+    setLoadingChart(true);
+    try {
+      const ph = await fetchPriceHistory(days);
+      if (ph.length > 0) setPriceHistory(ph);
+    } catch {}
+    setLoadingChart(false);
+  }, []);
+
   useEffect(() => {
     loadData();
+    loadChart(timeRange);
     const id = setInterval(loadData, 15000);
-    return () => clearInterval(id);
-  }, [loadData]);
+    const chartId = setInterval(() => loadChart(timeRange), 30000);
+    return () => { clearInterval(id); clearInterval(chartId); };
+  }, [loadData, loadChart, timeRange]);
 
   const dBlue = market?.dolar?.blue || 1200;
   const s = signal ? (sigMap[signal.signal] || sigMap.HOLD) : sigMap.HOLD;
@@ -273,8 +278,20 @@ function App() {
                   {isUp ? '\u25B2' : '\u25BC'} {pct(Math.abs(market?.ticker?.change_24h ?? 0))} 24h
                 </div>
               </div>
-              <div className="sparkline-container">
-                <Sparkline data={priceHistory.length > 1 ? priceHistory : []} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} />
+              <div style={{ display: 'flex', gap: '4px', margin: '10px 0 6px' }}>
+                {[{d:1,l:'24H'},{d:3,l:'3D'},{d:7,l:'1S'},{d:30,l:'1M'}].map(({d,l}) => (
+                  <button key={d} onClick={() => { setTimeRange(d); loadChart(d); }}
+                    style={{
+                      flex: 1, padding: '5px 0', border: 'none', borderRadius: '6px',
+                      fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer',
+                      background: timeRange === d ? 'var(--blue)' : 'var(--bg-secondary)',
+                      color: timeRange === d ? '#fff' : 'var(--text-muted)',
+                      transition: 'all 0.2s',
+                    }}>{l}</button>
+                ))}
+              </div>
+              <div className="sparkline-container" style={{ opacity: loadingChart ? 0.5 : 1, transition: 'opacity 0.3s' }}>
+                <Sparkline data={priceHistory} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} />
               </div>
               <div className="stat-row"><span className="stat-label">Mcap SOL</span><span className="stat-value">{ars(Math.round((market?.coingecko?.market_cap ?? 0) * dBlue / 1e9))}M ARS</span></div>
               <div className="stat-row"><span className="stat-label">ATH</span><span className="stat-value">{ars(toARS(market?.coingecko?.ath ?? 0))}</span></div>
