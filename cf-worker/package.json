@@ -1,0 +1,16 @@
+{
+  "name": "solana-quant",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute solana-quant-db --file=../data/migrations/001_cf_schema.sql",
+    "db:init:local": "wrangler d1 execute solana-quant-db --local --file=../data/migrations/001_cf_schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241205.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^3.100.0"
+  }
+}

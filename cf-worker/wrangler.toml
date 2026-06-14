@@ -1,0 +1,23 @@
+name = "solana-quant"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "solana-quant-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# KV Namespace
+[[kv_namespaces]]
+binding = "KV"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# Environment Variables (set via wrangler secret put)
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_CHAT_ID
+# COINGECKO_API_KEY
+
+# Cron Trigger - runs every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]
