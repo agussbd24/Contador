@@ -225,18 +225,7 @@ function App() {
       ]);
       if (sig.status === 'fulfilled' && sig.value) {
         setSignal(sig.value);
-        // Append current price to chart instead of replacing
-        setPriceHistory(prev => {
-          if (prev.length === 0) return prev;
-          const last = prev[prev.length - 1];
-          const newPrice = sig.value.price;
-          // Only add if price actually changed
-          if (newPrice !== last) {
-            const next = [...prev, newPrice];
-            return next.length > 120 ? next.slice(-120) : next;
-          }
-          return prev;
-        });
+        // DON'T append to chart here - only loadChart does it
       }
       if (mkt.status === 'fulfilled' && mkt.value) setMarket(mkt.value);
       if (ov.status === 'fulfilled' && ov.value) setOverview(ov.value);
@@ -265,9 +254,11 @@ function App() {
     return () => clearInterval(id);
   }, [loadData]);
 
-  // Fetch chart data only when timeRange changes
+  // Fetch chart data when timeRange changes + refresh every 5 min
   useEffect(() => {
     loadChart(timeRange);
+    const chartId = setInterval(() => loadChart(timeRange), 300000);
+    return () => clearInterval(chartId);
   }, [timeRange, loadChart]);
 
   const dBlue = market?.dolar?.blue || 1200;
@@ -383,7 +374,7 @@ function App() {
                   {isUp ? '\u25B2' : '\u25BC'} {pct(Math.abs(market?.ticker?.change_24h ?? 0))} 24h
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '4px', margin: '10px 0 6px' }}>
+              <div style={{ display: 'flex', gap: '4px', margin: '10px 0 6px', alignItems: 'center' }}>
                 {[{d:1,l:'24H'},{d:3,l:'3D'},{d:7,l:'1S'},{d:30,l:'1M'}].map(({d,l}) => (
                   <button key={d} onClick={() => { setTimeRange(d); loadChart(d); }}
                     style={{
@@ -394,6 +385,15 @@ function App() {
                       transition: 'all 0.2s',
                     }}>{l}</button>
                 ))}
+                <button onClick={() => loadChart(timeRange)}
+                  style={{
+                    width: 28, height: 28, border: 'none', borderRadius: '6px',
+                    background: 'var(--bg-secondary)', color: 'var(--text-muted)',
+                    cursor: 'pointer', fontSize: '0.8rem', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                  }} title="Actualizar grafico">
+                  {'\u{1F504}'}
+                </button>
               </div>
               <div style={{ opacity: loadingChart ? 0.5 : 1, transition: 'opacity 0.3s', height: 160 }}>
                 <MiniChart prices={priceHistory} timestamps={priceTimestamps} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} timeRange={timeRange} />

@@ -311,7 +311,7 @@ async function handlePriceHistory(url: URL): Promise<Response> {
     let timeframe = '1h';
     let limit = 24;
     if (days === 1) { timeframe = '1h'; limit = 24; }
-    else if (days === 3) { timeframe = '1h'; limit = 72; }
+    else if (days === 3) { timeframe = '4h'; limit = 18; }
     else if (days === 7) { timeframe = '4h'; limit = 42; }
     else if (days === 30) { timeframe = '1d'; limit = 30; }
     else { timeframe = '1h'; limit = 24; }
