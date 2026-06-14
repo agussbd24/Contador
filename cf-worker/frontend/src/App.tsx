@@ -223,7 +223,21 @@ function App() {
         fetchSignal(), fetchMarket(), fetchHistory(), checkHealth(),
         fetchMarketOverview(),
       ]);
-      if (sig.status === 'fulfilled' && sig.value) setSignal(sig.value);
+      if (sig.status === 'fulfilled' && sig.value) {
+        setSignal(sig.value);
+        // Append current price to chart instead of replacing
+        setPriceHistory(prev => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          const newPrice = sig.value.price;
+          // Only add if price actually changed
+          if (newPrice !== last) {
+            const next = [...prev, newPrice];
+            return next.length > 120 ? next.slice(-120) : next;
+          }
+          return prev;
+        });
+      }
       if (mkt.status === 'fulfilled' && mkt.value) setMarket(mkt.value);
       if (ov.status === 'fulfilled' && ov.value) setOverview(ov.value);
       if (hist.status === 'fulfilled') setHistory(hist.value);
@@ -247,11 +261,14 @@ function App() {
 
   useEffect(() => {
     loadData();
-    loadChart(timeRange);
     const id = setInterval(loadData, 15000);
-    const chartId = setInterval(() => loadChart(timeRange), 30000);
-    return () => { clearInterval(id); clearInterval(chartId); };
-  }, [loadData, loadChart, timeRange]);
+    return () => clearInterval(id);
+  }, [loadData]);
+
+  // Fetch chart data only when timeRange changes
+  useEffect(() => {
+    loadChart(timeRange);
+  }, [timeRange, loadChart]);
 
   const dBlue = market?.dolar?.blue || 1200;
   const s = signal ? (sigMap[signal.signal] || sigMap.HOLD) : sigMap.HOLD;
