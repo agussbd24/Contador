@@ -414,6 +414,42 @@ function App() {
               <div className="card-header">
                 <span className="card-title">Gestion de Riesgo</span>
               </div>
+
+              {/* Precio recomendado de compra/venta */}
+              <div style={{ marginBottom: 12 }}>
+                {signal.signal.includes('BUY') ? (
+                  <div style={{ padding: '10px', background: 'var(--green-dim)', borderRadius: '8px', border: '1px solid rgba(0,228,157,0.15)' }}>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, marginBottom: 4 }}>
+                      {'\u25B2'} Precio de Compra
+                    </div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--green)' }}>{ars(toARS(signal.price))}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{usd(signal.price)} USD</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Vender en: {ars(toARS(signal.risk_levels?.take_profit ?? 0))} (+{(((signal.risk_levels?.take_profit ?? 0) - signal.price) / signal.price * 100).toFixed(1)}%)
+                    </div>
+                  </div>
+                ) : signal.signal.includes('SELL') ? (
+                  <div style={{ padding: '10px', background: 'var(--red-dim)', borderRadius: '8px', border: '1px solid rgba(255,77,106,0.15)' }}>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, marginBottom: 4 }}>
+                      {'\u25BC'} Precio de Venta
+                    </div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--red)' }}>{ars(toARS(signal.price))}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>{usd(signal.price)} USD</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Comprar en: {ars(toARS(signal.risk_levels?.take_profit ?? 0))} ({(((signal.risk_levels?.take_profit ?? 0) - signal.price) / signal.price * 100).toFixed(1)}%)
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ padding: '10px', background: 'rgba(122,139,168,0.08)', borderRadius: '8px', border: '1px solid rgba(122,139,168,0.15)' }}>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, marginBottom: 4 }}>
+                      {'\u26AA'} Sin señal clara - Mantener
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{ars(toARS(signal.price))}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>Esperar mejor entrada</div>
+                  </div>
+                )}
+              </div>
+
               <div className="risk-grid">
                 <div className="risk-box">
                   <div className="risk-label">Stop Loss</div>
