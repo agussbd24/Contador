@@ -12,16 +12,19 @@ function App() {
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       setError(null);
-      const [sig, mkt, hist, h] = await Promise.all([
+      const [sig, mkt, hist, h] = await Promise.allSettled([
         fetchSignal(), fetchMarket(), fetchHistory(), checkHealth(),
       ]);
-      setSignal(sig);
-      setMarket(mkt);
-      setHistory(hist);
-      setHealthy(h);
+      if (sig.status === 'fulfilled' && sig.value) setSignal(sig.value);
+      if (mkt.status === 'fulfilled' && mkt.value) setMarket(mkt.value);
+      if (hist.status === 'fulfilled') setHistory(hist.value);
+      if (h.status === 'fulfilled') setHealthy(h.value);
       setLastUpdate(new Date());
+
+      if (sig.status === 'rejected' && mkt.status === 'rejected') {
+        setError('No se pudo conectar a la API');
+      }
     } catch (e: any) {
       setError(e.message);
       setHealthy(false);
@@ -51,7 +54,7 @@ function App() {
     return map[s] || s;
   };
 
-  if (loading && !signal) return (
+  if (loading && !signal && !error) return (
     <div className="app">
       <div className="loading">
         <div className="loading-spinner" />
