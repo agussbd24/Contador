@@ -17,27 +17,111 @@ const sigMap: Record<string, { label: string; icon: string; cls: string; color: 
   STRONG_SELL: { label: 'VENTA FUERTE', icon: '\u{1F534}', cls: 'sell', color: '#ff4d6a' },
 };
 
-/* ─── SPARKLINE ─── */
-function Sparkline({ data, color, dolar }: { data: number[]; color: string; dolar: number }) {
-  if (!data.length) return null;
-  const arsData = data.map(v => v * dolar);
-  const min = Math.min(...arsData);
-  const max = Math.max(...arsData);
-  const range = max - min || 1;
-  const h = 50;
-  const w = 300;
-  const pts = arsData.map((v, i) => `${(i / (arsData.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
-  const fillPts = `0,${h} ${pts} ${w},${h}`;
+/* ─── MINI CHART ─── */
+function MiniChart({ prices, timestamps, color, dolar, timeRange }: {
+  prices: number[]; timestamps: number[]; color: string; dolar: number; timeRange: number;
+}) {
+  if (!prices.length) return <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Sin datos del grafico</div>;
+
+  const pad = { top: 16, right: 55, bottom: 28, left: 8 };
+  const W = 400;
+  const H = 160;
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  const arsData = prices.map(v => v * dolar);
+  const rawMin = Math.min(...arsData);
+  const rawMax = Math.max(...arsData);
+  const range = rawMax - rawMin || 1;
+  const padding = range * 0.08;
+  const min = rawMin - padding;
+  const max = rawMax + padding;
+  const yRange = max - min;
+
+  // Grid lines (5 horizontal)
+  const gridLines = 5;
+  const gridPrices = Array.from({ length: gridLines }, (_, i) => min + (yRange / (gridLines - 1)) * i);
+
+  // Data points
+  const pts = arsData.map((v, i) => ({
+    x: pad.left + (i / Math.max(arsData.length - 1, 1)) * cw,
+    y: pad.top + ch - ((v - min) / yRange) * ch,
+  }));
+
+  const linePts = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const fillPts = `${pts[0].x},${pad.top + ch} ${linePts} ${pts[pts.length - 1].x},${pad.top + ch}`;
+
+  // Current price dot
+  const last = pts[pts.length - 1];
+  const currentPrice = arsData[arsData.length - 1];
+
+  // Time labels (4-5 along x axis)
+  const timeLabels: { x: number; label: string }[] = [];
+  if (timestamps.length > 1) {
+    const count = Math.min(5, timestamps.length);
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor((i / (count - 1)) * (timestamps.length - 1));
+      const ts = timestamps[idx];
+      const d = new Date(ts);
+      let label = '';
+      if (timeRange <= 1) label = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+      else if (timeRange <= 3) label = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit' });
+      else if (timeRange <= 7) label = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit' });
+      else label = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+      timeLabels.push({ x: pad.left + (idx / Math.max(timestamps.length - 1, 1)) * cw, label });
+    }
+  }
+
+  const fmtARS = (n: number) => {
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+    return '$' + n.toFixed(0);
+  };
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet">
       <defs>
-        <linearGradient id={`sparkFill-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.15" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <polygon points={fillPts} fill={`url(#sparkFill-${color.replace('#', '')})`} />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Grid lines */}
+      {gridPrices.map((gp, i) => {
+        const y = pad.top + ch - ((gp - min) / yRange) * ch;
+        return (
+          <g key={i}>
+            <line x1={pad.left} y1={y} x2={W - pad.right} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+            <text x={W - pad.right + 4} y={y + 3} fill="rgba(255,255,255,0.25)" fontSize="7" fontFamily="Inter, sans-serif">{fmtARS(gp)}</text>
+          </g>
+        );
+      })}
+
+      {/* Area fill */}
+      <polygon points={fillPts} fill="url(#chartFill)" />
+
+      {/* Line */}
+      <polyline points={linePts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ filter: `drop-shadow(0 0 3px ${color}40)` }} />
+
+      {/* Current price highlight */}
+      {last && (
+        <g>
+          <line x1={pad.left} y1={last.y} x2={W - pad.right} y2={last.y} stroke={color} strokeWidth="0.5" strokeDasharray="3,3" opacity="0.4" />
+          <circle cx={last.x} cy={last.y} r="3" fill={color} stroke="#0d1629" strokeWidth="1.5"
+            style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+          <rect x={W - pad.right + 1} y={last.y - 7} width="50" height="14" rx="3" fill={color} opacity="0.9" />
+          <text x={W - pad.right + 26} y={last.y + 3} fill="#000" fontSize="7" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">
+            {fmtARS(currentPrice)}
+          </text>
+        </g>
+      )}
+
+      {/* Time labels */}
+      {timeLabels.map((tl, i) => (
+        <text key={i} x={tl.x} y={H - 6} fill="rgba(255,255,255,0.25)" fontSize="6.5" textAnchor="middle" fontFamily="Inter, sans-serif">{tl.label}</text>
+      ))}
     </svg>
   );
 }
@@ -128,6 +212,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
+  const [priceTimestamps, setPriceTimestamps] = useState<number[]>([]);
   const [timeRange, setTimeRange] = useState(1);
   const [loadingChart, setLoadingChart] = useState(false);
 
@@ -151,8 +236,11 @@ function App() {
   const loadChart = useCallback(async (days: number) => {
     setLoadingChart(true);
     try {
-      const ph = await fetchPriceHistory(days);
-      if (ph.length > 0) setPriceHistory(ph);
+      const result = await fetchPriceHistory(days);
+      if (result.prices.length > 0) {
+        setPriceHistory(result.prices);
+        setPriceTimestamps(result.timestamps);
+      }
     } catch {}
     setLoadingChart(false);
   }, []);
@@ -290,8 +378,8 @@ function App() {
                     }}>{l}</button>
                 ))}
               </div>
-              <div className="sparkline-container" style={{ opacity: loadingChart ? 0.5 : 1, transition: 'opacity 0.3s' }}>
-                <Sparkline data={priceHistory} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} />
+              <div style={{ opacity: loadingChart ? 0.5 : 1, transition: 'opacity 0.3s', height: 160 }}>
+                <MiniChart prices={priceHistory} timestamps={priceTimestamps} color={isUp ? '#00e49d' : '#ff4d6a'} dolar={dBlue} timeRange={timeRange} />
               </div>
               <div className="stat-row"><span className="stat-label">Mcap SOL</span><span className="stat-value">{ars(Math.round((market?.coingecko?.market_cap ?? 0) * dBlue / 1e9))}M ARS</span></div>
               <div className="stat-row"><span className="stat-label">ATH</span><span className="stat-value">{ars(toARS(market?.coingecko?.ath ?? 0))}</span></div>

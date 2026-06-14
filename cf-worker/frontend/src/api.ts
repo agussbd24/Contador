@@ -66,13 +66,13 @@ export async function fetchMarketOverview(): Promise<MarketOverview | null> {
   } catch { return null; }
 }
 
-export async function fetchPriceHistory(days = 1): Promise<number[]> {
+export async function fetchPriceHistory(days = 1): Promise<{ prices: number[]; timestamps: number[] }> {
   try {
     const res = await fetchWithTimeout(`${API_BASE}/price/history?days=${days}`, 10000);
-    if (!res.ok) return [];
+    if (!res.ok) return { prices: [], timestamps: [] };
     const data = await res.json();
-    return data.prices || [];
-  } catch { return []; }
+    return { prices: data.prices || [], timestamps: data.timestamps || [] };
+  } catch { return { prices: [], timestamps: [] }; }
 }
 
 export async function fetchHistory(): Promise<{ time: string; signal: string; confidence: number; composite_score: number; price: number; }[]> {
