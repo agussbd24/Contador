@@ -52,6 +52,12 @@ export default {
         case '/signals/history':
           response = await handleSignalHistory(env);
           break;
+        case '/market/overview':
+          response = await handleMarketOverview();
+          break;
+        case '/price/history':
+          response = await handlePriceHistory();
+          break;
         default:
           response = json({ error: 'Not found' }, 404);
       }
@@ -274,6 +280,39 @@ async function runAnalysisAndAlert(env: Env): Promise<void> {
   }
 
   console.log(`Analysis: ${result.signal} (${result.confidence}%) @ $${result.price}`);
+}
+
+async function handleMarketOverview(): Promise<Response> {
+  const [btc, eth, sol, fg, dolar] = await Promise.all([
+    fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT').then(r => r.json()).catch(() => null),
+    fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT').then(r => r.json()).catch(() => null),
+    fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=SOLUSDT').then(r => r.json()).catch(() => null),
+    fetchFearGreed(),
+    fetchDolarArg(),
+  ]);
+
+  const totalCrypto = await fetch('https://api.coingecko.com/api/v3/global').then(r => r.json()).catch(() => null);
+
+  return json({
+    btc: btc ? { price: parseFloat(btc.lastPrice), change_24h: parseFloat(btc.priceChangePercent), volume: parseFloat(btc.quoteVolume) } : null,
+    eth: eth ? { price: parseFloat(eth.lastPrice), change_24h: parseFloat(eth.priceChangePercent), volume: parseFloat(eth.quoteVolume) } : null,
+    sol: sol ? { price: parseFloat(sol.lastPrice), change_24h: parseFloat(sol.priceChangePercent), volume: parseFloat(sol.quoteVolume) } : null,
+    fear_greed: fg,
+    dolar,
+    total_market_cap: totalCrypto?.data?.total_market_cap?.usd ?? 0,
+    btc_dominance: totalCrypto?.data?.market_cap_percentage?.btc ?? 0,
+    eth_dominance: totalCrypto?.data?.market_cap_percentage?.eth ?? 0,
+  });
+}
+
+async function handlePriceHistory(): Promise<Response> {
+  try {
+    const klines = await fetchKlines('1h', 24);
+    const prices = klines.map(k => k.close);
+    return json({ prices, timestamps: klines.map(k => k.timestamp) });
+  } catch (e) {
+    return json({ prices: [], timestamps: [] });
+  }
 }
 
 function json(data: any, status = 200): Response {

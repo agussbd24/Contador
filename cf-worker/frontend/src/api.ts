@@ -4,8 +4,7 @@ async function fetchWithTimeout(url: string, ms = 15000): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
   try {
-    const res = await fetch(url, { signal: controller.signal });
-    return res;
+    return await fetch(url, { signal: controller.signal });
   } finally {
     clearTimeout(timeout);
   }
@@ -33,10 +32,22 @@ export interface MarketData {
   };
   fear_greed: { value: number; classification: string; };
   dolar: { blue: number; oficial: number; tarjeta: number; };
+  coingecko?: { market_cap: number; market_cap_rank: number; ath: number; price_change_7d: number; circulating_supply: number; total_supply: number; };
+}
+
+export interface MarketOverview {
+  btc: { price: number; change_24h: number; volume: number } | null;
+  eth: { price: number; change_24h: number; volume: number } | null;
+  sol: { price: number; change_24h: number; volume: number } | null;
+  fear_greed: { value: number; classification: string };
+  dolar: { blue: number; oficial: number; tarjeta: number };
+  total_market_cap: number;
+  btc_dominance: number;
+  eth_dominance: number;
 }
 
 export async function fetchSignal(): Promise<SignalData> {
-  const res = await fetchWithTimeout(`${API_BASE}/signal`, 20000);
+  const res = await fetchWithTimeout(`${API_BASE}/signal`, 25000);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -47,15 +58,30 @@ export async function fetchMarket(): Promise<MarketData> {
   return res.json();
 }
 
-export async function fetchHistory(): Promise<{ time: string; signal: string; confidence: number; composite_score: number; }[]> {
+export async function fetchMarketOverview(): Promise<MarketOverview | null> {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/market/overview`, 12000);
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+export async function fetchPriceHistory(): Promise<number[]> {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/price/history`, 10000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.prices || [];
+  } catch { return []; }
+}
+
+export async function fetchHistory(): Promise<{ time: string; signal: string; confidence: number; composite_score: number; price: number; }[]> {
   try {
     const res = await fetchWithTimeout(`${API_BASE}/signals/history`, 10000);
     if (!res.ok) return [];
     const data = await res.json();
     return data.signals || [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 export async function checkHealth(): Promise<boolean> {
@@ -64,7 +90,5 @@ export async function checkHealth(): Promise<boolean> {
     if (!res.ok) return false;
     const data = await res.json();
     return data.status === 'healthy';
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
