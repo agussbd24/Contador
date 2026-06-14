@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = 'https://solana-quant.agussbd24.workers.dev';
 
 export interface SignalData {
   signal: string;
