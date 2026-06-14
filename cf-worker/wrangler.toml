@@ -6,12 +6,12 @@ compatibility_date = "2024-12-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "solana-quant-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "8b24ec51-1edd-4d96-8f27-42cbdf85c84a"
 
 # KV Namespace
 [[kv_namespaces]]
 binding = "KV"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "53e38ad36eb847f2af4e9c36bdea1baf"
 
 # Environment Variables (set via wrangler secret put)
 # TELEGRAM_BOT_TOKEN
